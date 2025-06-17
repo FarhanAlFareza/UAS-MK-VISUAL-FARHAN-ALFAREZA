@@ -1,786 +1,895 @@
 
-
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sqlite3
-import json
 from datetime import datetime
 
 class KRSAppFarhanAlfareza:
     def __init__(self, root):
-        # Inisialisasi jendela utama aplikasi KRS
         self.root = root
-        self.root.title("🎓 KRS Digital - Farhan Alfareza's Premium Edition")
+        self.root.title("🎓 SISTEM KRS DIGITAL - FARHAN ALFAREZA")
         self.root.geometry("1200x800")
-        # Menggunakan warna hitam profesional sebagai background utama
-        self.root.configure(bg='#0f172a')
-
-        # Setup tema dan style untuk aplikasi
+        self.root.configure(bg='#2c3e50')  # Background dark blue-gray
+        
+        # Setup styles
         self.setup_styles()
-
-        # Setup database SQLite untuk menyimpan data
+        
+        # Setup database
         self.setup_database()
-
-        # Load data mata kuliah dari array ke database
-        self.load_mata_kuliah_data()
-
-        # Membuat semua widget GUI
+        
+        # Initialize data
+        self.init_sample_data()
+        
+        # Create GUI
         self.create_widgets()
-
-        # Load data awal ke dalam tabel
-        self.refresh_mahasiswa_list()
-        self.refresh_mata_kuliah_list()
+        
+        # Load initial data
+        self.refresh_all_data()
 
     def setup_styles(self):
-        """Setup tema warna hitam-hijau modern yang profesional dan elegan"""
+        """Setup custom styles dengan tema menarik"""
         style = ttk.Style()
         style.theme_use('clam')
-
-        # Style untuk Notebook (tab container) - hitam dengan aksen hijau
-        style.configure('Modern.TNotebook', 
-                       background='#0f172a', 
-                       borderwidth=0)
-        style.configure('Modern.TNotebook.Tab', 
-                       background='#1e293b', 
-                       foreground='#10b981',
-                       padding=[25, 12], 
-                       font=('Segoe UI', 11, 'bold'),
-                       borderwidth=1,
-                       relief='solid')
-        # Efek hover dan selected pada tab - gradasi hijau yang elegan
-        style.map('Modern.TNotebook.Tab',
-                  background=[('selected', '#059669'), ('active', '#065f46')],
-                  foreground=[('selected', '#ffffff'), ('active', '#f0fdf4')])
-
-        # Style untuk LabelFrame - frame dengan border hijau neon
-        style.configure('Premium.TLabelframe', 
-                       background='#1e293b', 
-                       foreground='#10b981',
-                       borderwidth=2, 
-                       relief='solid',
-                       bordercolor='#059669')
-        style.configure('Premium.TLabelframe.Label', 
-                       background='#1e293b', 
-                       foreground='#22c55e',
-                       font=('Segoe UI', 12, 'bold'))
-
-        # Style untuk Button - tombol dengan gradasi hijau profesional
-        style.configure('Premium.TButton',
-                       background='#059669', 
-                       foreground='#ffffff',
-                       font=('Segoe UI', 10, 'bold'), 
-                       padding=[15, 8],
-                       borderwidth=2, 
-                       relief='solid',
-                       bordercolor='#10b981')
-        # Efek hover pada button - transisi warna yang smooth
-        style.map('Premium.TButton',
-                  background=[('active', '#10b981'), ('pressed', '#047857')],
-                  bordercolor=[('active', '#22c55e')])
-
-        # Style untuk Entry dan Combobox - tema gelap dengan aksen hijau
-        style.configure('Modern.TEntry',
-                       fieldbackground='#374151',
-                       foreground='#f9fafb',
-                       bordercolor='#059669',
-                       insertcolor='#10b981')
         
-        style.configure('Modern.TCombobox',
-                       fieldbackground='#374151',
-                       foreground='#f9fafb',
-                       bordercolor='#059669',
-                       arrowcolor='#10b981')
+        # Notebook style - gradient hijau-biru
+        style.configure('Custom.TNotebook', 
+                       background='#34495e',
+                       borderwidth=0)
+        style.configure('Custom.TNotebook.Tab', 
+                       background='#3498db', 
+                       foreground='white',
+                       padding=[20, 12], 
+                       font=('Arial', 11, 'bold'))
+        style.map('Custom.TNotebook.Tab',
+                  background=[('selected', '#e74c3c')],
+                  foreground=[('selected', 'white')])
+        
+        # LabelFrame style - hijau mint
+        style.configure('Green.TLabelframe', 
+                       background='#ecf0f1', 
+                       foreground='#27ae60',
+                       borderwidth=3, 
+                       relief='groove')
+        style.configure('Green.TLabelframe.Label', 
+                       background='#ecf0f1', 
+                       foreground='#27ae60',
+                       font=('Arial', 12, 'bold'))
+        
+        # Button style - orange gradient
+        style.configure('Orange.TButton',
+                       background='#e67e22', 
+                       foreground='white',
+                       font=('Arial', 10, 'bold'), 
+                       padding=12)
+        style.map('Orange.TButton',
+                  background=[('active', '#d35400')])
+        
+        # Entry style
+        style.configure('Custom.TEntry',
+                       font=('Arial', 10),
+                       borderwidth=2,
+                       relief='solid')
+        
+        # Treeview style dengan garis
+        style.configure('Custom.Treeview',
+                       background='white',
+                       foreground='#2c3e50',
+                       rowheight=30,
+                       font=('Arial', 10),
+                       borderwidth=2,
+                       relief='solid')
+        style.configure('Custom.Treeview.Heading',
+                       background='#3498db',
+                       foreground='white',
+                       font=('Arial', 11, 'bold'),
+                       borderwidth=2,
+                       relief='raised')
+        style.map('Custom.Treeview',
+                  background=[('selected', '#e74c3c')],
+                  foreground=[('selected', 'white')])
 
     def setup_database(self):
-        """Setup database SQLite dan membuat tabel-tabel yang diperlukan"""
-        # Membuat koneksi ke database SQLite
-        self.conn = sqlite3.connect('krs_database.db')
+        """Setup database dengan semua tabel yang diperlukan"""
+        self.conn = sqlite3.connect('farhan_krs.db')
         self.cursor = self.conn.cursor()
-
-        # Membuat tabel mahasiswa untuk menyimpan data mahasiswa
+        
+        # Tabel mahasiswa
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS mahasiswa (
-                nim TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nim TEXT UNIQUE NOT NULL,
                 nama TEXT NOT NULL,
                 jurusan TEXT NOT NULL,
                 semester INTEGER NOT NULL,
                 max_sks INTEGER DEFAULT 24
             )
         """)
-
-        # Membuat tabel mata_kuliah untuk menyimpan daftar mata kuliah
+        
+        # Tabel mata kuliah
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS mata_kuliah (
-                kode_mk TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kode_mk TEXT UNIQUE NOT NULL,
                 nama_mk TEXT NOT NULL,
                 sks INTEGER NOT NULL,
-                dosen TEXT NOT NULL,
+                semester INTEGER NOT NULL,
                 jadwal TEXT NOT NULL,
+                dosen TEXT NOT NULL,
                 ruang TEXT NOT NULL,
-                kapasitas INTEGER NOT NULL,
-                terisi INTEGER DEFAULT 0
+                kapasitas INTEGER DEFAULT 40
             )
         """)
-
-        # Membuat tabel krs untuk menyimpan data pengambilan mata kuliah mahasiswa
+        
+        # Tabel KRS
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS krs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nim TEXT NOT NULL,
-                kode_mk TEXT NOT NULL,
+                mahasiswa_id INTEGER,
+                mata_kuliah_id INTEGER,
                 tanggal_ambil TEXT NOT NULL,
                 status TEXT DEFAULT 'Aktif',
-                FOREIGN KEY (nim) REFERENCES mahasiswa (nim),
-                FOREIGN KEY (kode_mk) REFERENCES mata_kuliah (kode_mk),
-                UNIQUE(nim, kode_mk)
+                FOREIGN KEY (mahasiswa_id) REFERENCES mahasiswa (id),
+                FOREIGN KEY (mata_kuliah_id) REFERENCES mata_kuliah (id),
+                UNIQUE(mahasiswa_id, mata_kuliah_id)
             )
         """)
-
-        # Menyimpan perubahan ke database
+        
         self.conn.commit()
 
-    def load_mata_kuliah_data(self):
-        """Load data mata kuliah dari array dan insert ke database jika belum ada"""
-        # Data mata kuliah dalam bentuk array dengan dosen Farhan Alfareza
-        mata_kuliah_data = [
-            {"kode_mk": "TI101", "nama_mk": "Algoritma dan Pemrograman", "sks": 3, "dosen": "Dr. Ahmad Wijaya", "jadwal": "Senin 08:00-10:00", "ruang": "Lab Komputer A", "kapasitas": 40},
-            {"kode_mk": "TI102", "nama_mk": "Struktur Data", "sks": 3, "dosen": "Prof. Budi Santoso", "jadwal": "Selasa 10:00-12:00", "ruang": "Lab Komputer B", "kapasitas": 35},
-            {"kode_mk": "TI103", "nama_mk": "Basis Data", "sks": 3, "dosen": "Dr. Citra Dewi", "jadwal": "Rabu 13:00-15:00", "ruang": "Lab Database", "kapasitas": 30},
-            {"kode_mk": "TI104", "nama_mk": "Jaringan Komputer", "sks": 3, "dosen": "Prof. Dedi Rahman", "jadwal": "Kamis 08:00-10:00", "ruang": "Lab Jaringan", "kapasitas": 25},
-            {"kode_mk": "TI105", "nama_mk": "Sistem Operasi", "sks": 3, "dosen": "Dr. Eka Pratama", "jadwal": "Jumat 10:00-12:00", "ruang": "Lab Sistem", "kapasitas": 30},
-            {"kode_mk": "TI106", "nama_mk": "Pemrograman Web", "sks": 2, "dosen": "Prof. Farhan Alfareza", "jadwal": "Senin 13:00-15:00", "ruang": "Lab Web Dev", "kapasitas": 40},
-            {"kode_mk": "TI107", "nama_mk": "Kecerdasan Buatan", "sks": 3, "dosen": "Dr. Gita Sari", "jadwal": "Selasa 15:00-17:00", "ruang": "Lab AI", "kapasitas": 20},
-            {"kode_mk": "TI108", "nama_mk": "Grafika Komputer", "sks": 2, "dosen": "Prof. Hadi Nugroho", "jadwal": "Rabu 08:00-10:00", "ruang": "Lab Grafika", "kapasitas": 25}
-        ]
-
-        # Loop untuk memasukkan data mata kuliah ke database
-        for mk in mata_kuliah_data:
-            # Cek apakah data sudah ada
-            self.cursor.execute("SELECT COUNT(*) FROM mata_kuliah WHERE kode_mk = ?", (mk["kode_mk"],))
-            if self.cursor.fetchone()[0] == 0:
-                # Insert data jika belum ada
-                self.cursor.execute("""
-                    INSERT INTO mata_kuliah (kode_mk, nama_mk, sks, dosen, jadwal, ruang, kapasitas)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (mk["kode_mk"], mk["nama_mk"], mk["sks"], mk["dosen"], mk["jadwal"], mk["ruang"], mk["kapasitas"]))
-
-        # Simpan perubahan ke database
-        self.conn.commit()
+    def init_sample_data(self):
+        """Initialize dengan data contoh jika database kosong"""
+        # Cek apakah sudah ada data
+        self.cursor.execute("SELECT COUNT(*) FROM mahasiswa")
+        if self.cursor.fetchone()[0] == 0:
+            # Insert sample mahasiswa
+            mahasiswa_data = [
+                ('2023001', 'Farhan Alfareza', 'Teknik Informatika', 5, 24),
+                ('2023002', 'Ahmad Rizki', 'Sistem Informasi', 3, 22),
+                ('2023003', 'Siti Nurhaliza', 'Teknik Komputer', 7, 20),
+                ('2023004', 'Budi Santoso', 'Teknik Informatika', 1, 24),
+                ('2023005', 'Maya Sari', 'Sistem Informasi', 3, 22)
+            ]
+            
+            self.cursor.executemany("""
+                INSERT INTO mahasiswa (nim, nama, jurusan, semester, max_sks)
+                VALUES (?, ?, ?, ?, ?)
+            """, mahasiswa_data)
+            
+            # Insert sample mata kuliah
+            matkul_data = [
+                ('IF101', 'Pemrograman Dasar', 3, 1, 'Senin 08:00-10:30', 'Dr. Ahmad Fauzi', 'R.101', 40),
+                ('IF102', 'Matematika Diskrit', 3, 1, 'Selasa 10:30-13:00', 'Prof. Siti Aminah', 'R.102', 35),
+                ('IF201', 'Struktur Data', 4, 3, 'Rabu 08:00-11:30', 'Dr. Budi Santoso', 'R.201', 30),
+                ('IF202', 'Basis Data', 3, 3, 'Kamis 13:00-15:30', 'Dr. Maya Sari', 'R.202', 32),
+                ('IF301', 'Pemrograman Web', 3, 5, 'Jumat 08:00-10:30', 'Dr. Farhan Tech', 'R.301', 28),
+                ('IF302', 'Kecerdasan Buatan', 4, 5, 'Senin 13:00-16:30', 'Prof. AI Master', 'R.302', 25),
+                ('IF401', 'Proyek Akhir', 6, 7, 'Konsultasi', 'Dr. Supervisor', 'R.401', 20),
+                ('SI201', 'Analisis Sistem', 3, 3, 'Selasa 08:00-10:30', 'Dr. System Ana', 'R.203', 30),
+                ('SI301', 'E-Business', 3, 5, 'Rabu 13:00-15:30', 'Dr. Digital Biz', 'R.303', 25)
+            ]
+            
+            self.cursor.executemany("""
+                INSERT INTO mata_kuliah (kode_mk, nama_mk, sks, semester, jadwal, dosen, ruang, kapasitas)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, matkul_data)
+            
+            self.conn.commit()
 
     def create_widgets(self):
-        """Membuat tampilan GUI dengan tema hitam-hijau modern yang profesional"""
-        # Frame header dengan background hitam dan border hijau neon
-        header_frame = tk.Frame(self.root, bg='#0f172a', height=100, relief='solid', borderwidth=3)
-        header_frame.configure(highlightbackground='#10b981', highlightcolor='#22c55e', highlightthickness=2)
-        header_frame.pack(fill='x', padx=15, pady=15)
+        """Membuat GUI dengan desain menarik"""
+        # Header frame dengan gradient
+        header_frame = tk.Frame(self.root, bg='#2c3e50', height=100)
+        header_frame.pack(fill='x', padx=15, pady=10)
         header_frame.pack_propagate(False)
-
-        # Label judul aplikasi dengan font futuristik dan efek glow
+        
+        # Title dengan efek shadow
         title_label = tk.Label(header_frame, 
-                              text="🚀 SISTEM KRS DIGITAL PREMIUM - FARHAN ALFAREZA EDITION", 
-                              font=('Segoe UI', 22, 'bold'), 
-                              bg='#0f172a', 
-                              fg='#22c55e')
-        title_label.pack(expand=True)
-
-        # Subtitle dengan warna hijau yang lebih soft
+                              text="🚀 SISTEM KRS DIGITAL", 
+                              font=('Arial', 24, 'bold'), 
+                              bg='#2c3e50', fg='#ecf0f1')
+        title_label.pack(pady=5)
+        
         subtitle_label = tk.Label(header_frame, 
-                                 text="✨ Professional Academic Management System", 
-                                 font=('Segoe UI', 12, 'italic'), 
-                                 bg='#0f172a', 
-                                 fg='#84cc16')
+                                 text="FARHAN ALFAREZA EDITION", 
+                                 font=('Arial', 16, 'bold'), 
+                                 bg='#2c3e50', fg='#e74c3c')
         subtitle_label.pack()
-
-        # Notebook utama untuk tab dengan style modern
-        self.notebook = ttk.Notebook(self.root, style='Modern.TNotebook')
+        
+        # Main notebook
+        self.notebook = ttk.Notebook(self.root, style='Custom.TNotebook')
         self.notebook.pack(fill='both', expand=True, padx=15, pady=10)
-
-        # Membuat tab untuk data mahasiswa
+        
+        # Create tabs
         self.create_mahasiswa_tab()
-
-        # Membuat tab untuk data mata kuliah
-        self.create_mata_kuliah_tab()
-
-        # Membuat tab untuk management KRS
+        self.create_matkul_tab()
         self.create_krs_tab()
+        self.create_laporan_tab()
 
     def create_mahasiswa_tab(self):
-        """Tab untuk mengelola data mahasiswa dengan tema hitam-hijau modern"""
-        # Frame utama tab mahasiswa
-        mhs_frame = tk.Frame(self.notebook, bg='#0f172a')
-        self.notebook.add(mhs_frame, text="👨‍🎓 DATA MAHASISWA")
-
-        # Frame input dengan border hijau neon dan background gelap
-        input_frame = ttk.LabelFrame(mhs_frame, text="💫 Input Data Mahasiswa Baru", style='Premium.TLabelframe')
+        """Tab manajemen mahasiswa"""
+        mahasiswa_frame = tk.Frame(self.notebook, bg='#ecf0f1')
+        self.notebook.add(mahasiswa_frame, text="👥 DATA MAHASISWA")
+        
+        # Input frame
+        input_frame = ttk.LabelFrame(mahasiswa_frame, text="📝 INPUT DATA MAHASISWA", style='Green.TLabelframe')
         input_frame.pack(fill='x', padx=20, pady=15)
-
-        # Input field untuk NIM mahasiswa dengan style modern
-        tk.Label(input_frame, text="NIM:", font=('Segoe UI', 11, 'bold'), 
-                bg='#1e293b', fg='#22c55e').grid(row=0, column=0, padx=15, pady=12, sticky='w')
-        self.nim_entry = tk.Entry(input_frame, font=('Segoe UI', 11), bg='#374151', fg='#f9fafb', 
-                                 width=18, relief='solid', borderwidth=2, highlightthickness=1,
-                                 highlightcolor='#10b981', highlightbackground='#059669')
-        self.nim_entry.grid(row=0, column=1, padx=8, pady=12, sticky='ew')
-
-        # Input field untuk nama mahasiswa dengan style modern
-        tk.Label(input_frame, text="Nama Lengkap:", font=('Segoe UI', 11, 'bold'), 
-                bg='#1e293b', fg='#22c55e').grid(row=0, column=2, padx=15, pady=12, sticky='w')
-        self.nama_entry = tk.Entry(input_frame, font=('Segoe UI', 11), bg='#374151', fg='#f9fafb', 
-                                  width=30, relief='solid', borderwidth=2, highlightthickness=1,
-                                  highlightcolor='#10b981', highlightbackground='#059669')
-        self.nama_entry.grid(row=0, column=3, padx=8, pady=12, sticky='ew')
-
-        # Dropdown untuk memilih jurusan dengan style gelap
-        tk.Label(input_frame, text="Program Studi:", font=('Segoe UI', 11, 'bold'), 
-                bg='#1e293b', fg='#22c55e').grid(row=1, column=0, padx=15, pady=12, sticky='w')
-        self.jurusan_var = tk.StringVar()
-        jurusan_combo = ttk.Combobox(input_frame, textvariable=self.jurusan_var, 
-                                   values=["Teknik Informatika", "Sistem Informasi", "Teknik Komputer"],
-                                   font=('Segoe UI', 11), width=22, style='Modern.TCombobox')
-        jurusan_combo.grid(row=1, column=1, padx=8, pady=12, sticky='ew')
-
-        # Dropdown untuk memilih semester dengan style gelap
-        tk.Label(input_frame, text="Semester:", font=('Segoe UI', 11, 'bold'), 
-                bg='#1e293b', fg='#22c55e').grid(row=1, column=2, padx=15, pady=12, sticky='w')
-        self.semester_var = tk.StringVar()
-        semester_combo = ttk.Combobox(input_frame, textvariable=self.semester_var,
-                                    values=["1", "2", "3", "4", "5", "6", "7", "8"],
-                                    font=('Segoe UI', 11), width=10, style='Modern.TCombobox')
-        semester_combo.grid(row=1, column=3, padx=8, pady=12, sticky='w')
-
-        # Konfigurasi grid untuk responsive layout
-        input_frame.columnconfigure(1, weight=1)
-        input_frame.columnconfigure(3, weight=2)
-
-        # Frame untuk tombol-tombol aksi dengan background gelap
-        btn_frame = tk.Frame(mhs_frame, bg='#0f172a')
-        btn_frame.pack(fill='x', padx=20, pady=15)
-
-        # Tombol untuk menambah data mahasiswa dengan style premium
-        ttk.Button(btn_frame, text="🚀 Tambah Data", command=self.tambah_mahasiswa, style='Premium.TButton').pack(side='left', padx=8)
-        # Tombol untuk mengupdate data mahasiswa
-        ttk.Button(btn_frame, text="✨ Update Data", command=self.update_mahasiswa, style='Premium.TButton').pack(side='left', padx=8)
-        # Tombol untuk menghapus data mahasiswa
-        ttk.Button(btn_frame, text="🗑️ Hapus Data", command=self.hapus_mahasiswa, style='Premium.TButton').pack(side='left', padx=8)
-        # Tombol untuk reset form input
-        ttk.Button(btn_frame, text="🧹 Reset Form", command=self.clear_mahasiswa_form, style='Premium.TButton').pack(side='left', padx=8)
-
-        # Frame untuk tabel data mahasiswa dengan background gelap
-        tree_frame = tk.Frame(mhs_frame, bg='#1e293b', relief='solid', borderwidth=2)
-        tree_frame.configure(highlightbackground='#059669', highlightthickness=1)
-        tree_frame.pack(fill='both', expand=True, padx=20, pady=10)
-
-        # Definisi kolom untuk tabel mahasiswa
-        columns = ('NIM', 'Nama Mahasiswa', 'Program Studi', 'Semester', 'Batas SKS')
-        self.mahasiswa_tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=14)
-
-        # Setup header dan lebar kolom dengan styling
+        
+        # Grid layout untuk input
+        tk.Label(input_frame, text="NIM:", font=('Arial', 11, 'bold'), bg='#ecf0f1', fg='#27ae60').grid(row=0, column=0, padx=10, pady=8, sticky='w')
+        self.entry_nim = ttk.Entry(input_frame, width=15, style='Custom.TEntry')
+        self.entry_nim.grid(row=0, column=1, padx=10, pady=8)
+        
+        tk.Label(input_frame, text="Nama:", font=('Arial', 11, 'bold'), bg='#ecf0f1', fg='#27ae60').grid(row=0, column=2, padx=10, pady=8, sticky='w')
+        self.entry_nama = ttk.Entry(input_frame, width=25, style='Custom.TEntry')
+        self.entry_nama.grid(row=0, column=3, padx=10, pady=8)
+        
+        tk.Label(input_frame, text="Jurusan:", font=('Arial', 11, 'bold'), bg='#ecf0f1', fg='#27ae60').grid(row=1, column=0, padx=10, pady=8, sticky='w')
+        self.entry_jurusan = ttk.Entry(input_frame, width=20, style='Custom.TEntry')
+        self.entry_jurusan.grid(row=1, column=1, padx=10, pady=8)
+        
+        tk.Label(input_frame, text="Semester:", font=('Arial', 11, 'bold'), bg='#ecf0f1', fg='#27ae60').grid(row=1, column=2, padx=10, pady=8, sticky='w')
+        self.entry_semester = ttk.Combobox(input_frame, values=[1,2,3,4,5,6,7,8], width=10, state='readonly')
+        self.entry_semester.grid(row=1, column=3, padx=10, pady=8, sticky='w')
+        
+        tk.Label(input_frame, text="Max SKS:", font=('Arial', 11, 'bold'), bg='#ecf0f1', fg='#27ae60').grid(row=2, column=0, padx=10, pady=8, sticky='w')
+        self.entry_max_sks = ttk.Entry(input_frame, width=10, style='Custom.TEntry')
+        self.entry_max_sks.insert(0, "24")
+        self.entry_max_sks.grid(row=2, column=1, padx=10, pady=8, sticky='w')
+        
+        # Button frame
+        btn_frame = tk.Frame(input_frame, bg='#ecf0f1')
+        btn_frame.grid(row=3, column=0, columnspan=4, pady=15)
+        
+        ttk.Button(btn_frame, text="➕ TAMBAH", command=self.tambah_mahasiswa, style='Orange.TButton').pack(side='left', padx=5)
+        ttk.Button(btn_frame, text="✏️ UPDATE", command=self.update_mahasiswa, style='Orange.TButton').pack(side='left', padx=5)
+        ttk.Button(btn_frame, text="🗑️ HAPUS", command=self.hapus_mahasiswa, style='Orange.TButton').pack(side='left', padx=5)
+        ttk.Button(btn_frame, text="🔄 CLEAR", command=self.clear_mahasiswa_form, style='Orange.TButton').pack(side='left', padx=5)
+        
+        # Data display frame
+        data_frame = ttk.LabelFrame(mahasiswa_frame, text="📊 DAFTAR MAHASISWA", style='Green.TLabelframe')
+        data_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        # Treeview dengan garis
+        tree_frame = tk.Frame(data_frame, bg='#ecf0f1')
+        tree_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        columns = ('ID', 'NIM', 'Nama', 'Jurusan', 'Semester', 'Max SKS')
+        self.mahasiswa_tree = ttk.Treeview(tree_frame, columns=columns, show='headings', style='Custom.Treeview')
+        
+        # Configure columns
+        self.mahasiswa_tree.column('ID', width=50, anchor='center')
+        self.mahasiswa_tree.column('NIM', width=100, anchor='center')
+        self.mahasiswa_tree.column('Nama', width=200)
+        self.mahasiswa_tree.column('Jurusan', width=150)
+        self.mahasiswa_tree.column('Semester', width=80, anchor='center')
+        self.mahasiswa_tree.column('Max SKS', width=80, anchor='center')
+        
         for col in columns:
             self.mahasiswa_tree.heading(col, text=col)
-            self.mahasiswa_tree.column(col, width=150)
-
-        # Mengatur style untuk treeview
-        style = ttk.Style()
-        style.configure("Treeview", background="#374151", foreground="#f9fafb", fieldbackground="#374151")
-        style.configure("Treeview.Heading", background="#059669", foreground="#ffffff", font=('Segoe UI', 10, 'bold'))
-
-        # Scrollbar untuk tabel mahasiswa dengan style gelap
+        
+        # Scrollbar
         scrollbar_mhs = ttk.Scrollbar(tree_frame, orient='vertical', command=self.mahasiswa_tree.yview)
         self.mahasiswa_tree.configure(yscrollcommand=scrollbar_mhs.set)
-
-        # Pack tabel dan scrollbar
-        self.mahasiswa_tree.pack(side='left', fill='both', expand=True, padx=5, pady=5)
-        scrollbar_mhs.pack(side='right', fill='y', pady=5)
-
-        # Event handler ketika item di tabel diklik
+        
+        self.mahasiswa_tree.pack(side='left', fill='both', expand=True)
+        scrollbar_mhs.pack(side='right', fill='y')
+        
         self.mahasiswa_tree.bind('<<TreeviewSelect>>', self.select_mahasiswa)
 
-    def create_mata_kuliah_tab(self):
-        """Tab untuk mengelola data mata kuliah dengan tema hitam-hijau modern"""
-        # Frame utama tab mata kuliah
-        mk_frame = tk.Frame(self.notebook, bg='#0f172a')
-        self.notebook.add(mk_frame, text="📚 DAFTAR MATA KULIAH")
-
-        # Header info dengan background gelap dan border hijau neon
-        info_frame = tk.Frame(mk_frame, bg='#1e293b', height=80, relief='solid', borderwidth=2)
-        info_frame.configure(highlightbackground='#10b981', highlightthickness=2)
-        info_frame.pack(fill='x', padx=20, pady=15)
-        info_frame.pack_propagate(False)
-
-        # Label judul untuk katalog mata kuliah dengan efek glow
-        info_label = tk.Label(info_frame, text="📖 KATALOG MATA KULIAH SEMESTER INI", 
-                             font=('Segoe UI', 18, 'bold'), bg='#1e293b', fg='#22c55e')
-        info_label.pack(expand=True)
-
-        # Subtitle dengan warna hijau yang lebih soft
-        sub_info_label = tk.Label(info_frame, text="🎯 Sistem Akademik Terintegrasi", 
-                                 font=('Segoe UI', 12, 'italic'), bg='#1e293b', fg='#84cc16')
-        sub_info_label.pack()
-
-        # Frame untuk tabel mata kuliah dengan styling premium
-        tree_frame = tk.Frame(mk_frame, bg='#1e293b', relief='solid', borderwidth=2)
-        tree_frame.configure(highlightbackground='#059669', highlightthickness=1)
-        tree_frame.pack(fill='both', expand=True, padx=20, pady=10)
-
-        # Definisi kolom untuk tabel mata kuliah
-        columns = ('Kode MK', 'Nama Mata Kuliah', 'SKS', 'Dosen Pengampu', 'Jadwal', 'Ruang', 'Kapasitas', 'Terisi')
-        self.mk_tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=16)
-
-        # Setup header dan lebar kolom mata kuliah
+    def create_matkul_tab(self):
+        """Tab mata kuliah"""
+        matkul_frame = tk.Frame(self.notebook, bg='#ecf0f1')
+        self.notebook.add(matkul_frame, text="📚 MATA KULIAH")
+        
+        # Data display
+        data_frame = ttk.LabelFrame(matkul_frame, text="📋 DAFTAR MATA KULIAH", style='Green.TLabelframe')
+        data_frame.pack(fill='both', expand=True, padx=20, pady=15)
+        
+        tree_frame = tk.Frame(data_frame, bg='#ecf0f1')
+        tree_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        columns = ('Kode MK', 'Nama Mata Kuliah', 'SKS', 'Semester', 'Jadwal', 'Dosen', 'Ruang', 'Kapasitas')
+        self.matkul_tree = ttk.Treeview(tree_frame, columns=columns, show='headings', style='Custom.Treeview')
+        
+        # Configure columns
+        self.matkul_tree.column('Kode MK', width=80, anchor='center')
+        self.matkul_tree.column('Nama Mata Kuliah', width=200)
+        self.matkul_tree.column('SKS', width=50, anchor='center')
+        self.matkul_tree.column('Semester', width=70, anchor='center')
+        self.matkul_tree.column('Jadwal', width=150)
+        self.matkul_tree.column('Dosen', width=150)
+        self.matkul_tree.column('Ruang', width=80, anchor='center')
+        self.matkul_tree.column('Kapasitas', width=80, anchor='center')
+        
         for col in columns:
-            self.mk_tree.heading(col, text=col)
-            if col in ['Kode MK', 'SKS', 'Kapasitas', 'Terisi']:
-                self.mk_tree.column(col, width=100)
-            else:
-                self.mk_tree.column(col, width=160)
-
-        # Scrollbar untuk tabel mata kuliah
-        scrollbar_mk = ttk.Scrollbar(tree_frame, orient='vertical', command=self.mk_tree.yview)
-        self.mk_tree.configure(yscrollcommand=scrollbar_mk.set)
-
-        # Pack tabel dan scrollbar
-        self.mk_tree.pack(side='left', fill='both', expand=True, padx=5, pady=5)
-        scrollbar_mk.pack(side='right', fill='y', pady=5)
+            self.matkul_tree.heading(col, text=col)
+        
+        scrollbar_mk = ttk.Scrollbar(tree_frame, orient='vertical', command=self.matkul_tree.yview)
+        self.matkul_tree.configure(yscrollcommand=scrollbar_mk.set)
+        
+        self.matkul_tree.pack(side='left', fill='both', expand=True)
+        scrollbar_mk.pack(side='right', fill='y')
 
     def create_krs_tab(self):
-        """Tab untuk mengelola KRS dengan tema hitam-hijau modern"""
-        # Frame utama tab KRS
-        krs_frame = tk.Frame(self.notebook, bg='#0f172a')
+        """Tab pengisian KRS"""
+        krs_frame = tk.Frame(self.notebook, bg='#ecf0f1')
         self.notebook.add(krs_frame, text="📝 PENGISIAN KRS")
-
-        # Frame untuk memilih mahasiswa dengan style premium
-        select_frame = ttk.LabelFrame(krs_frame, text="🎯 Pilih Mahasiswa untuk KRS", style='Premium.TLabelframe')
+        
+        # Student selection
+        select_frame = ttk.LabelFrame(krs_frame, text="🎯 PILIH MAHASISWA", style='Green.TLabelframe')
         select_frame.pack(fill='x', padx=20, pady=15)
-
-        # Label dan dropdown untuk pilih mahasiswa
-        tk.Label(select_frame, text="Mahasiswa:", font=('Segoe UI', 12, 'bold'), 
-                bg='#1e293b', fg='#22c55e').grid(row=0, column=0, padx=15, pady=15, sticky='w')
-        self.mahasiswa_krs_var = tk.StringVar()
-        self.mahasiswa_combo = ttk.Combobox(select_frame, textvariable=self.mahasiswa_krs_var, 
-                                          width=70, font=('Segoe UI', 11), style='Modern.TCombobox')
-        self.mahasiswa_combo.grid(row=0, column=1, padx=15, pady=15, sticky='ew')
-        # Event handler ketika mahasiswa dipilih
+        
+        tk.Label(select_frame, text="Mahasiswa:", font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#27ae60').grid(row=0, column=0, padx=10, pady=10)
+        self.mahasiswa_combo = ttk.Combobox(select_frame, width=50, state='readonly', font=('Arial', 10))
+        self.mahasiswa_combo.grid(row=0, column=1, padx=10, pady=10)
         self.mahasiswa_combo.bind('<<ComboboxSelected>>', self.on_mahasiswa_selected)
-
-        # Konfigurasi grid untuk responsive
+        
+        # Info panel
+        self.info_frame = tk.Frame(select_frame, bg='#3498db', height=60)
+        self.info_frame.grid(row=1, column=0, columnspan=2, sticky='ew', padx=10, pady=10)
+        self.info_frame.grid_propagate(False)
+        
+        self.info_label = tk.Label(self.info_frame, text="💡 Pilih mahasiswa untuk melihat informasi KRS", 
+                                  font=('Arial', 12, 'bold'), bg='#3498db', fg='white')
+        self.info_label.pack(expand=True)
+        
         select_frame.columnconfigure(1, weight=1)
-
-        # Frame info KRS dengan background gelap dan border hijau
-        self.info_frame = tk.Frame(krs_frame, bg='#1e293b', height=90, relief='solid', borderwidth=2)
-        self.info_frame.configure(highlightbackground='#10b981', highlightthickness=1)
-        self.info_frame.pack(fill='x', padx=20, pady=8)
-        self.info_frame.pack_propagate(False)
-
-        # Label untuk menampilkan info mahasiswa dan SKS
-        self.info_label = tk.Label(self.info_frame, text="💡 Silakan pilih mahasiswa terlebih dahulu untuk melihat info KRS!", 
-                                  font=('Segoe UI', 13, 'bold'), bg='#1e293b', fg='#84cc16', wraplength=900)
-        self.info_label.pack(expand=True, padx=15)
-
-        # Frame untuk mata kuliah yang tersedia
-        available_frame = ttk.LabelFrame(krs_frame, text="🎓 Mata Kuliah yang Tersedia", style='Premium.TLabelframe')
-        available_frame.pack(fill='both', expand=True, padx=20, pady=8)
-
-        # Frame tabel mata kuliah tersedia
-        av_tree_frame = tk.Frame(available_frame, bg='#1e293b', relief='solid', borderwidth=1)
-        av_tree_frame.configure(highlightbackground='#059669', highlightthickness=1)
-        av_tree_frame.pack(fill='both', expand=True, padx=12, pady=8)
-
-        # Definisi kolom untuk tabel mata kuliah tersedia
-        av_columns = ('Kode MK', 'Nama Mata Kuliah', 'SKS', 'Dosen', 'Jadwal', 'Ruang', 'Slot Tersisa')
-        self.available_tree = ttk.Treeview(av_tree_frame, columns=av_columns, show='headings', height=8)
-
-        # Setup kolom mata kuliah tersedia
+        
+        # Main content frame
+        content_frame = tk.Frame(krs_frame, bg='#ecf0f1')
+        content_frame.pack(fill='both', expand=True, padx=20, pady=5)
+        
+        # Available courses
+        available_frame = ttk.LabelFrame(content_frame, text="📚 MATA KULIAH TERSEDIA", style='Green.TLabelframe')
+        available_frame.pack(side='left', fill='both', expand=True, padx=(0, 10))
+        
+        av_tree_frame = tk.Frame(available_frame, bg='#ecf0f1')
+        av_tree_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        av_columns = ('Kode', 'Nama MK', 'SKS', 'Jadwal', 'Dosen', 'Ruang')
+        self.available_tree = ttk.Treeview(av_tree_frame, columns=av_columns, show='headings', style='Custom.Treeview')
+        
         for col in av_columns:
             self.available_tree.heading(col, text=col)
-            if col in ['Kode MK', 'SKS', 'Slot Tersisa']:
-                self.available_tree.column(col, width=90)
+            if col in ['Kode', 'SKS']:
+                self.available_tree.column(col, width=60, anchor='center')
+            elif col == 'Ruang':
+                self.available_tree.column(col, width=70, anchor='center')
             else:
-                self.available_tree.column(col, width=140)
-
-        # Scrollbar untuk tabel mata kuliah tersedia
+                self.available_tree.column(col, width=120)
+        
         scrollbar_av = ttk.Scrollbar(av_tree_frame, orient='vertical', command=self.available_tree.yview)
         self.available_tree.configure(yscrollcommand=scrollbar_av.set)
-
-        # Pack tabel dan scrollbar
-        self.available_tree.pack(side='left', fill='both', expand=True, padx=3, pady=3)
-        scrollbar_av.pack(side='right', fill='y', pady=3)
-
-        # Frame tombol untuk aksi KRS
-        krs_btn_frame = tk.Frame(available_frame, bg='#1e293b')
-        krs_btn_frame.pack(fill='x', padx=12, pady=10)
-
-        # Tombol untuk mengambil mata kuliah
-        ttk.Button(krs_btn_frame, text="✅ Ambil Matkul", command=self.ambil_mata_kuliah, style='Premium.TButton').pack(side='left', padx=8)
-        # Tombol untuk membatalkan mata kuliah
-        ttk.Button(krs_btn_frame, text="❌ Batalkan", command=self.batal_ambil_mata_kuliah, style='Premium.TButton').pack(side='left', padx=8)
-        # Tombol untuk refresh data
-        ttk.Button(krs_btn_frame, text="🔄 Refresh Data", command=self.refresh_available_courses, style='Premium.TButton').pack(side='left', padx=8)
-
-        # Frame untuk KRS yang sudah diambil
-        current_frame = ttk.LabelFrame(krs_frame, text="📋 KRS yang Sudah Diambil", style='Premium.TLabelframe')
-        current_frame.pack(fill='both', expand=True, padx=20, pady=8)
-
-        # Frame tabel KRS yang sudah diambil
-        curr_tree_frame = tk.Frame(current_frame, bg='#1e293b', relief='solid', borderwidth=1)
-        curr_tree_frame.configure(highlightbackground='#059669', highlightthickness=1)
-        curr_tree_frame.pack(fill='both', expand=True, padx=12, pady=8)
-
-        # Definisi kolom untuk KRS yang sudah diambil
-        curr_columns = ('Kode MK', 'Nama Mata Kuliah', 'SKS', 'Dosen', 'Jadwal', 'Status')
-        self.current_krs_tree = ttk.Treeview(curr_tree_frame, columns=curr_columns, show='headings', height=6)
-
-        # Setup kolom KRS yang sudah diambil
-        for col in curr_columns:
-            self.current_krs_tree.heading(col, text=col)
-            if col in ['Kode MK', 'SKS']:
-                self.current_krs_tree.column(col, width=90)
+        
+        self.available_tree.pack(side='left', fill='both', expand=True)
+        scrollbar_av.pack(side='right', fill='y')
+        
+        # Control buttons
+        btn_frame = tk.Frame(content_frame, bg='#ecf0f1')
+        btn_frame.pack(side='left', padx=10)
+        
+        ttk.Button(btn_frame, text="➡️\nAMBIL", command=self.ambil_matkul, style='Orange.TButton').pack(pady=10)
+        ttk.Button(btn_frame, text="⬅️\nBATAL", command=self.batal_matkul, style='Orange.TButton').pack(pady=10)
+        ttk.Button(btn_frame, text="🔄\nREFRESH", command=self.refresh_krs_data, style='Orange.TButton').pack(pady=10)
+        
+        # Enrolled courses
+        enrolled_frame = ttk.LabelFrame(content_frame, text="✅ KRS YANG DIAMBIL", style='Green.TLabelframe')
+        enrolled_frame.pack(side='right', fill='both', expand=True, padx=(10, 0))
+        
+        en_tree_frame = tk.Frame(enrolled_frame, bg='#ecf0f1')
+        en_tree_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        self.enrolled_tree = ttk.Treeview(en_tree_frame, columns=av_columns, show='headings', style='Custom.Treeview')
+        
+        for col in av_columns:
+            self.enrolled_tree.heading(col, text=col)
+            if col in ['Kode', 'SKS']:
+                self.enrolled_tree.column(col, width=60, anchor='center')
+            elif col == 'Ruang':
+                self.enrolled_tree.column(col, width=70, anchor='center')
             else:
-                self.current_krs_tree.column(col, width=140)
+                self.enrolled_tree.column(col, width=120)
+        
+        scrollbar_en = ttk.Scrollbar(en_tree_frame, orient='vertical', command=self.enrolled_tree.yview)
+        self.enrolled_tree.configure(yscrollcommand=scrollbar_en.set)
+        
+        self.enrolled_tree.pack(side='left', fill='both', expand=True)
+        scrollbar_en.pack(side='right', fill='y')
 
-        # Scrollbar untuk tabel KRS
-        scrollbar_curr = ttk.Scrollbar(curr_tree_frame, orient='vertical', command=self.current_krs_tree.yview)
-        self.current_krs_tree.configure(yscrollcommand=scrollbar_curr.set)
+    def create_laporan_tab(self):
+        """Tab laporan KRS"""
+        laporan_frame = tk.Frame(self.notebook, bg='#ecf0f1')
+        self.notebook.add(laporan_frame, text="📊 LAPORAN KRS")
+        
+        # Control frame
+        control_frame = ttk.LabelFrame(laporan_frame, text="🔍 FILTER LAPORAN", style='Green.TLabelframe')
+        control_frame.pack(fill='x', padx=20, pady=15)
+        
+        tk.Label(control_frame, text="Pilih Mahasiswa:", font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#27ae60').grid(row=0, column=0, padx=10, pady=10)
+        self.laporan_combo = ttk.Combobox(control_frame, width=50, state='readonly', font=('Arial', 10))
+        self.laporan_combo.grid(row=0, column=1, padx=10, pady=10)
+        self.laporan_combo.bind('<<ComboboxSelected>>', self.generate_laporan)
+        
+        ttk.Button(control_frame, text="📋 LIHAT SEMUA", command=self.lihat_semua_laporan, style='Orange.TButton').grid(row=0, column=2, padx=20, pady=10)
+        ttk.Button(control_frame, text="🖨️ CETAK KRS", command=self.cetak_krs, style='Orange.TButton').grid(row=0, column=3, padx=10, pady=10)
+        
+        control_frame.columnconfigure(1, weight=1)
+        
+        # Statistics frame
+        stats_frame = ttk.LabelFrame(laporan_frame, text="📈 STATISTIK KRS", style='Green.TLabelframe')
+        stats_frame.pack(fill='x', padx=20, pady=10)
+        
+        self.stats_label = tk.Label(stats_frame, text="Belum ada data yang dipilih", 
+                                   font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        self.stats_label.pack(pady=15)
+        
+        # Report display
+        report_frame = ttk.LabelFrame(laporan_frame, text="📄 DETAIL LAPORAN KRS", style='Green.TLabelframe')
+        report_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        tree_frame = tk.Frame(report_frame, bg='#ecf0f1')
+        tree_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        laporan_columns = ('NIM', 'Nama', 'Kode MK', 'Nama MK', 'SKS', 'Dosen', 'Jadwal', 'Status')
+        self.laporan_tree = ttk.Treeview(tree_frame, columns=laporan_columns, show='headings', style='Custom.Treeview')
+        
+        # Configure columns
+        self.laporan_tree.column('NIM', width=100, anchor='center')
+        self.laporan_tree.column('Nama', width=150)
+        self.laporan_tree.column('Kode MK', width=80, anchor='center')
+        self.laporan_tree.column('Nama MK', width=200)
+        self.laporan_tree.column('SKS', width=50, anchor='center')
+        self.laporan_tree.column('Dosen', width=150)
+        self.laporan_tree.column('Jadwal', width=150)
+        self.laporan_tree.column('Status', width=80, anchor='center')
+        
+        for col in laporan_columns:
+            self.laporan_tree.heading(col, text=col)
+        
+        scrollbar_lap = ttk.Scrollbar(tree_frame, orient='vertical', command=self.laporan_tree.yview)
+        self.laporan_tree.configure(yscrollcommand=scrollbar_lap.set)
+        
+        self.laporan_tree.pack(side='left', fill='both', expand=True)
+        scrollbar_lap.pack(side='right', fill='y')
 
-        # Pack tabel dan scrollbar
-        self.current_krs_tree.pack(side='left', fill='both', expand=True, padx=3, pady=3)
-        scrollbar_curr.pack(side='right', fill='y', pady=3)
-
+    # Mahasiswa management functions
     def tambah_mahasiswa(self):
-        """Fungsi untuk menambah data mahasiswa baru ke database"""
-        # Ambil data dari form input
-        nim = self.nim_entry.get().strip()
-        nama = self.nama_entry.get().strip()
-        jurusan = self.jurusan_var.get()
-        semester = self.semester_var.get()
-
-        # Validasi: pastikan semua field diisi
-        if not all([nim, nama, jurusan, semester]):
-            messagebox.showwarning("Oops! 😅", "Mohon isi semua data dulu ya!")
+        """Tambah mahasiswa baru"""
+        nim = self.entry_nim.get().strip()
+        nama = self.entry_nama.get().strip()
+        jurusan = self.entry_jurusan.get().strip()
+        semester = self.entry_semester.get()
+        max_sks = self.entry_max_sks.get().strip()
+        
+        if not all([nim, nama, jurusan, semester, max_sks]):
+            messagebox.showwarning("Input Error! ⚠️", "Semua field harus diisi!")
             return
-
+        
         try:
-            # Insert data mahasiswa ke database
+            semester = int(semester)
+            max_sks = int(max_sks)
+            
             self.cursor.execute("""
-                INSERT INTO mahasiswa (nim, nama, jurusan, semester)
-                VALUES (?, ?, ?, ?)
-            """, (nim, nama, jurusan, int(semester)))
+                INSERT INTO mahasiswa (nim, nama, jurusan, semester, max_sks)
+                VALUES (?, ?, ?, ?, ?)
+            """, (nim, nama, jurusan, semester, max_sks))
             self.conn.commit()
-            messagebox.showinfo("Berhasil! 🚀", "Data mahasiswa berhasil ditambahkan!")
-            # Reset form dan refresh list
+            
+            messagebox.showinfo("Sukses! 🎉", f"Mahasiswa {nama} berhasil ditambahkan!")
             self.clear_mahasiswa_form()
-            self.refresh_mahasiswa_list()
+            self.refresh_mahasiswa()
+            
         except sqlite3.IntegrityError:
-            # Error jika NIM sudah ada (karena NIM adalah primary key)
-            messagebox.showerror("Duplikasi Data! 😔", "NIM ini sudah terdaftar di sistem!")
+            messagebox.showerror("Error! ❌", "NIM sudah terdaftar!")
+        except ValueError:
+            messagebox.showerror("Error! ❌", "Semester dan Max SKS harus berupa angka!")
         except Exception as e:
-            # Error lainnya
-            messagebox.showerror("Error", f"Terjadi kesalahan: {str(e)}")
+            messagebox.showerror("Error! ❌", f"Terjadi kesalahan: {str(e)}")
 
     def update_mahasiswa(self):
-        """Fungsi untuk mengupdate data mahasiswa yang sudah ada"""
-        # Cek apakah ada mahasiswa yang dipilih
+        """Update data mahasiswa"""
         selected = self.mahasiswa_tree.selection()
         if not selected:
-            messagebox.showwarning("Pilih Data! 😊", "Silakan pilih mahasiswa yang ingin diupdate!")
+            messagebox.showwarning("Pilih Data! ⚠️", "Pilih mahasiswa yang akan diupdate!")
             return
-
-        # Ambil data dari form
-        nim = self.nim_entry.get().strip()
-        nama = self.nama_entry.get().strip()
-        jurusan = self.jurusan_var.get()
-        semester = self.semester_var.get()
-
-        # Validasi input
-        if not all([nim, nama, jurusan, semester]):
-            messagebox.showwarning("Data Tidak Lengkap! 😅", "Mohon isi semua data yang diperlukan!")
+        
+        item = self.mahasiswa_tree.item(selected[0])
+        mahasiswa_id = item['values'][0]
+        
+        nim = self.entry_nim.get().strip()
+        nama = self.entry_nama.get().strip()
+        jurusan = self.entry_jurusan.get().strip()
+        semester = self.entry_semester.get()
+        max_sks = self.entry_max_sks.get().strip()
+        
+        if not all([nim, nama, jurusan, semester, max_sks]):
+            messagebox.showwarning("Input Error! ⚠️", "Semua field harus diisi!")
             return
-
+        
         try:
-            # Update data di database
+            semester = int(semester)
+            max_sks = int(max_sks)
+            
             self.cursor.execute("""
-                UPDATE mahasiswa SET nama=?, jurusan=?, semester=?
-                WHERE nim=?
-            """, (nama, jurusan, int(semester), nim))
+                UPDATE mahasiswa SET nim=?, nama=?, jurusan=?, semester=?, max_sks=?
+                WHERE id=?
+            """, (nim, nama, jurusan, semester, max_sks, mahasiswa_id))
             self.conn.commit()
-            messagebox.showinfo("Update Berhasil! 🎉", "Data mahasiswa berhasil diperbarui!")
-            # Reset form dan refresh list
+            
+            messagebox.showinfo("Sukses! 🎉", f"Data mahasiswa {nama} berhasil diupdate!")
             self.clear_mahasiswa_form()
-            self.refresh_mahasiswa_list()
+            self.refresh_mahasiswa()
+            
+        except sqlite3.IntegrityError:
+            messagebox.showerror("Error! ❌", "NIM sudah terdaftar!")
+        except ValueError:
+            messagebox.showerror("Error! ❌", "Semester dan Max SKS harus berupa angka!")
         except Exception as e:
-            messagebox.showerror("Error", f"Terjadi kesalahan: {str(e)}")
+            messagebox.showerror("Error! ❌", f"Terjadi kesalahan: {str(e)}")
 
     def hapus_mahasiswa(self):
-        """Fungsi untuk menghapus data mahasiswa dari database"""
-        # Cek apakah ada mahasiswa yang dipilih
+        """Hapus mahasiswa"""
         selected = self.mahasiswa_tree.selection()
         if not selected:
-            messagebox.showwarning("Pilih Data! 😊", "Silakan pilih mahasiswa yang ingin dihapus!")
+            messagebox.showwarning("Pilih Data! ⚠️", "Pilih mahasiswa yang akan dihapus!")
             return
-
-        # Ambil NIM dari item yang dipilih
-        item = self.mahasiswa_tree.item(selected)
-        nim = item['values'][0]
-
-        # Konfirmasi penghapusan
-        if messagebox.askyesno("Konfirmasi Hapus 🤔", f"Apakah Anda yakin ingin menghapus mahasiswa dengan NIM {nim}?\nData akan hilang permanen!"):
+        
+        item = self.mahasiswa_tree.item(selected[0])
+        mahasiswa_id = item['values'][0]
+        nama = item['values'][2]
+        
+        result = messagebox.askyesno("Konfirmasi Hapus! 🗑️", f"Yakin hapus data mahasiswa {nama}?\nSemua data KRS akan ikut terhapus!")
+        if result:
             try:
-                # Hapus data KRS terlebih dahulu (foreign key constraint)
-                self.cursor.execute("DELETE FROM krs WHERE nim=?", (nim,))
-                # Kemudian hapus data mahasiswa
-                self.cursor.execute("DELETE FROM mahasiswa WHERE nim=?", (nim,))
+                self.cursor.execute("DELETE FROM krs WHERE mahasiswa_id=?", (mahasiswa_id,))
+                self.cursor.execute("DELETE FROM mahasiswa WHERE id=?", (mahasiswa_id,))
                 self.conn.commit()
-                messagebox.showinfo("Berhasil Dihapus! 🎉", "Data mahasiswa telah dihapus!")
-                # Reset form dan refresh list
+                
+                messagebox.showinfo("Sukses! 🎉", f"Data mahasiswa {nama} berhasil dihapus!")
                 self.clear_mahasiswa_form()
-                self.refresh_mahasiswa_list()
+                self.refresh_mahasiswa()
+                
             except Exception as e:
-                messagebox.showerror("Error", f"Terjadi kesalahan: {str(e)}")
-
-    def clear_mahasiswa_form(self):
-        """Fungsi untuk membersihkan form input mahasiswa"""
-        self.nim_entry.delete(0, tk.END)
-        self.nama_entry.delete(0, tk.END)
-        self.jurusan_var.set('')
-        self.semester_var.set('')
+                messagebox.showerror("Error! ❌", f"Terjadi kesalahan: {str(e)}")
 
     def select_mahasiswa(self, event):
-        """Event handler ketika mahasiswa diklik di tabel"""
+        """Handle selection mahasiswa"""
         selected = self.mahasiswa_tree.selection()
         if selected:
-            # Ambil data dari item yang dipilih
-            item = self.mahasiswa_tree.item(selected)
+            item = self.mahasiswa_tree.item(selected[0])
             values = item['values']
+            
+            self.entry_nim.delete(0, tk.END)
+            self.entry_nama.delete(0, tk.END)
+            self.entry_jurusan.delete(0, tk.END)
+            self.entry_semester.set('')
+            self.entry_max_sks.delete(0, tk.END)
+            
+            self.entry_nim.insert(0, values[1])
+            self.entry_nama.insert(0, values[2])
+            self.entry_jurusan.insert(0, values[3])
+            self.entry_semester.set(values[4])
+            self.entry_max_sks.insert(0, values[5])
 
-            # Isi form dengan data yang dipilih
-            self.nim_entry.delete(0, tk.END)
-            self.nim_entry.insert(0, values[0])
-            self.nama_entry.delete(0, tk.END)
-            self.nama_entry.insert(0, values[1])
-            self.jurusan_var.set(values[2])
-            self.semester_var.set(values[3])
+    def clear_mahasiswa_form(self):
+        """Clear form mahasiswa"""
+        self.entry_nim.delete(0, tk.END)
+        self.entry_nama.delete(0, tk.END)
+        self.entry_jurusan.delete(0, tk.END)
+        self.entry_semester.set('')
+        self.entry_max_sks.delete(0, tk.END)
+        self.entry_max_sks.insert(0, "24")
 
-    def refresh_mahasiswa_list(self):
-        """Fungsi untuk me-refresh daftar mahasiswa di tabel"""
-        # Hapus semua item di tabel
-        for item in self.mahasiswa_tree.get_children():
-            self.mahasiswa_tree.delete(item)
-
-        # Load data mahasiswa dari database
-        self.cursor.execute("SELECT nim, nama, jurusan, semester, max_sks FROM mahasiswa ORDER BY nim")
-        for row in self.cursor.fetchall():
-            self.mahasiswa_tree.insert('', 'end', values=row)
-
-        # Update dropdown mahasiswa untuk KRS
-        self.cursor.execute("SELECT nim, nama FROM mahasiswa ORDER BY nim")
-        mahasiswa_list = [f"{row[0]} - {row[1]}" for row in self.cursor.fetchall()]
-        self.mahasiswa_combo['values'] = mahasiswa_list
-
-    def refresh_mata_kuliah_list(self):
-        """Fungsi untuk me-refresh daftar mata kuliah di tabel"""
-        # Hapus semua item di tabel mata kuliah
-        for item in self.mk_tree.get_children():
-            self.mk_tree.delete(item)
-
-        # Load data mata kuliah dengan join untuk menghitung jumlah yang sudah terisi
-        self.cursor.execute("""
-            SELECT mk.kode_mk, mk.nama_mk, mk.sks, mk.dosen, mk.jadwal, mk.ruang, 
-                   mk.kapasitas, COUNT(krs.kode_mk) as terisi
-            FROM mata_kuliah mk
-            LEFT JOIN krs ON mk.kode_mk = krs.kode_mk AND krs.status = 'Aktif'
-            GROUP BY mk.kode_mk
-            ORDER BY mk.kode_mk
-        """)
-        for row in self.cursor.fetchall():
-            self.mk_tree.insert('', 'end', values=row)
-
+    # KRS functions
     def on_mahasiswa_selected(self, event):
-        """Event handler ketika mahasiswa dipilih di dropdown KRS"""
-        selected = self.mahasiswa_krs_var.get()
-        if selected:
-            # Extract NIM dari pilihan
-            nim = selected.split(' - ')[0]
+        """Handle selection mahasiswa untuk KRS"""
+        selection = self.mahasiswa_combo.get()
+        if selection:
+            nim = selection.split(' - ')[0]
             self.current_nim = nim
-            # Update info dan refresh data
             self.update_krs_info()
-            self.refresh_available_courses()
-            self.refresh_current_krs()
+            self.refresh_krs_data()
 
     def update_krs_info(self):
-        """Fungsi untuk mengupdate informasi KRS mahasiswa"""
-        if hasattr(self, 'current_nim'):
-            # Ambil info mahasiswa
-            self.cursor.execute("""
-                SELECT nama, jurusan, semester, max_sks FROM mahasiswa WHERE nim=?
-            """, (self.current_nim,))
-            mhs_info = self.cursor.fetchone()
-
-            # Hitung total SKS yang sudah diambil
-            self.cursor.execute("""
-                SELECT SUM(mk.sks) FROM krs k
-                JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-                WHERE k.nim=? AND k.status='Aktif'
-            """, (self.current_nim,))
-            current_sks = self.cursor.fetchone()[0] or 0
-
-            # Update label info
-            if mhs_info:
-                info_text = f"🎓 {mhs_info[0]} | {mhs_info[1]} | Semester {mhs_info[2]} | "
-                info_text += f"SKS Diambil: {current_sks}/{mhs_info[3]} | Sisa: {mhs_info[3] - current_sks} SKS"
-                self.info_label.config(text=info_text)
-
-    def refresh_available_courses(self):
-        """Fungsi untuk me-refresh mata kuliah yang tersedia untuk diambil"""
-        # Hapus semua item di tabel
-        for item in self.available_tree.get_children():
-            self.available_tree.delete(item)
-
-        if hasattr(self, 'current_nim'):
-            # Query mata kuliah yang belum diambil dan masih ada slot
-            self.cursor.execute("""
-                SELECT mk.kode_mk, mk.nama_mk, mk.sks, mk.dosen, mk.jadwal, mk.ruang,
-                       (mk.kapasitas - COUNT(krs.kode_mk)) as sisa_kapasitas
-                FROM mata_kuliah mk
-                LEFT JOIN krs ON mk.kode_mk = krs.kode_mk AND krs.status = 'Aktif'
-                WHERE mk.kode_mk NOT IN (
-                    SELECT kode_mk FROM krs WHERE nim=? AND status='Aktif'
-                )
-                GROUP BY mk.kode_mk
-                HAVING sisa_kapasitas > 0
-                ORDER BY mk.kode_mk
-            """, (self.current_nim,))
-
-            # Insert data ke tabel
-            for row in self.cursor.fetchall():
-                self.available_tree.insert('', 'end', values=row)
-
-    def refresh_current_krs(self):
-        """Fungsi untuk me-refresh KRS yang sudah diambil mahasiswa"""
-        # Hapus semua item di tabel
-        for item in self.current_krs_tree.get_children():
-            self.current_krs_tree.delete(item)
-
-        if hasattr(self, 'current_nim'):
-            # Query KRS yang sudah diambil
-            self.cursor.execute("""
-                SELECT mk.kode_mk, mk.nama_mk, mk.sks, mk.dosen, mk.jadwal, k.status
-                FROM krs k
-                JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-                WHERE k.nim=?
-                ORDER BY mk.kode_mk
-            """, (self.current_nim,))
-
-            # Insert data ke tabel
-            for row in self.cursor.fetchall():
-                self.current_krs_tree.insert('', 'end', values=row)
-
-    def ambil_mata_kuliah(self):
-        """Fungsi untuk mengambil mata kuliah ke dalam KRS"""
-        # Validasi: pastikan mahasiswa sudah dipilih
+        """Update info KRS mahasiswa"""
         if not hasattr(self, 'current_nim'):
-            messagebox.showwarning("Pilih Mahasiswa! 😊", "Silakan pilih mahasiswa terlebih dahulu!")
             return
-
-        # Validasi: pastikan mata kuliah sudah dipilih
-        selected = self.available_tree.selection()
-        if not selected:
-            messagebox.showwarning("Pilih Mata Kuliah! 😊", "Silakan pilih mata kuliah yang ingin diambil!")
+        
+        # Get mahasiswa info
+        self.cursor.execute("SELECT nama, semester, max_sks FROM mahasiswa WHERE nim=?", (self.current_nim,))
+        mhs_data = self.cursor.fetchone()
+        if not mhs_data:
             return
-
-        # Ambil data mata kuliah yang dipilih
-        item = self.available_tree.item(selected)
-        kode_mk = item['values'][0]
-        sks_mk = item['values'][2]
-
-        # Hitung total SKS yang sudah diambil
+        
+        nama, semester, max_sks = mhs_data
+        
+        # Get current SKS
         self.cursor.execute("""
             SELECT SUM(mk.sks) FROM krs k
-            JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-            WHERE k.nim=? AND k.status='Aktif'
+            JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+            WHERE k.mahasiswa_id = (SELECT id FROM mahasiswa WHERE nim=?) AND k.status='Aktif'
         """, (self.current_nim,))
         current_sks = self.cursor.fetchone()[0] or 0
+        
+        info_text = f"📋 {nama} | Semester: {semester} | SKS Diambil: {current_sks}/{max_sks} | Sisa: {max_sks - current_sks}"
+        self.info_label.config(text=info_text)
 
-        # Ambil batas maksimal SKS mahasiswa
-        self.cursor.execute("SELECT max_sks FROM mahasiswa WHERE nim=?", (self.current_nim,))
-        max_sks = self.cursor.fetchone()[0]
-
-        # Validasi: cek apakah SKS melebihi batas
-        if current_sks + sks_mk > max_sks:
-            messagebox.showwarning("Melebihi Batas SKS! 😅", 
-                                 f"Jika mengambil mata kuliah ini, total SKS akan melebihi batas maksimal ({max_sks} SKS)!")
+    def refresh_krs_data(self):
+        """Refresh data KRS"""
+        if not hasattr(self, 'current_nim'):
             return
+        
+        # Clear trees
+        for item in self.available_tree.get_children():
+            self.available_tree.delete(item)
+        for item in self.enrolled_tree.get_children():
+            self.enrolled_tree.delete(item)
+        
+        # Get mahasiswa ID
+        self.cursor.execute("SELECT id, semester FROM mahasiswa WHERE nim=?", (self.current_nim,))
+        mhs_data = self.cursor.fetchone()
+        if not mhs_data:
+            return
+        
+        mahasiswa_id, semester = mhs_data
+        
+        # Get enrolled mata kuliah IDs
+        self.cursor.execute("SELECT mata_kuliah_id FROM krs WHERE mahasiswa_id=? AND status='Aktif'", (mahasiswa_id,))
+        enrolled_ids = [row[0] for row in self.cursor.fetchall()]
+        
+        # Load available mata kuliah (not enrolled, same or lower semester)
+        if enrolled_ids:
+            placeholders = ','.join(['?'] * len(enrolled_ids))
+            self.cursor.execute(f"""
+                SELECT kode_mk, nama_mk, sks, jadwal, dosen, ruang
+                FROM mata_kuliah 
+                WHERE id NOT IN ({placeholders}) AND semester <= ?
+                ORDER BY kode_mk
+            """, enrolled_ids + [semester])
+        else:
+            self.cursor.execute("""
+                SELECT kode_mk, nama_mk, sks, jadwal, dosen, ruang
+                FROM mata_kuliah 
+                WHERE semester <= ?
+                ORDER BY kode_mk
+            """, (semester,))
+        
+        for row in self.cursor.fetchall():
+            self.available_tree.insert('', 'end', values=row)
+        
+        # Load enrolled mata kuliah
+        self.cursor.execute("""
+            SELECT mk.kode_mk, mk.nama_mk, mk.sks, mk.jadwal, mk.dosen, mk.ruang
+            FROM krs k
+            JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+            WHERE k.mahasiswa_id=? AND k.status='Aktif'
+            ORDER BY mk.kode_mk
+        """, (mahasiswa_id,))
+        
+        for row in self.cursor.fetchall():
+            self.enrolled_tree.insert('', 'end', values=row)
 
+    def ambil_matkul(self):
+        """Ambil mata kuliah"""
+        if not hasattr(self, 'current_nim'):
+            messagebox.showwarning("Pilih Mahasiswa! ⚠️", "Pilih mahasiswa terlebih dahulu!")
+            return
+        
+        selected = self.available_tree.selection()
+        if not selected:
+            messagebox.showwarning("Pilih Mata Kuliah! ⚠️", "Pilih mata kuliah yang akan diambil!")
+            return
+        
+        item = self.available_tree.item(selected[0])
+        kode_mk = item['values'][0]
+        nama_mk = item['values'][1]
+        sks = int(item['values'][2])
+        
+        # Get mahasiswa data
+        self.cursor.execute("SELECT id, max_sks FROM mahasiswa WHERE nim=?", (self.current_nim,))
+        mhs_data = self.cursor.fetchone()
+        if not mhs_data:
+            return
+        
+        mahasiswa_id, max_sks = mhs_data
+        
+        # Get mata kuliah ID
+        self.cursor.execute("SELECT id FROM mata_kuliah WHERE kode_mk=?", (kode_mk,))
+        mk_data = self.cursor.fetchone()
+        if not mk_data:
+            return
+        
+        mata_kuliah_id = mk_data[0]
+        
+        # Check current SKS
+        self.cursor.execute("""
+            SELECT SUM(mk.sks) FROM krs k
+            JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+            WHERE k.mahasiswa_id=? AND k.status='Aktif'
+        """, (mahasiswa_id,))
+        current_sks = self.cursor.fetchone()[0] or 0
+        
+        if current_sks + sks > max_sks:
+            messagebox.showwarning("Batas SKS! ⚠️", f"Total SKS akan melebihi batas maksimal!\nCurrent: {current_sks} + {sks} = {current_sks + sks} > {max_sks}")
+            return
+        
         try:
-            # Insert data ke tabel KRS
             tanggal_ambil = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.cursor.execute("""
-                INSERT INTO krs (nim, kode_mk, tanggal_ambil, status)
+                INSERT INTO krs (mahasiswa_id, mata_kuliah_id, tanggal_ambil, status)
                 VALUES (?, ?, ?, 'Aktif')
-            """, (self.current_nim, kode_mk, tanggal_ambil))
-
+            """, (mahasiswa_id, mata_kuliah_id, tanggal_ambil))
             self.conn.commit()
-            messagebox.showinfo("Berhasil! 🚀", f"Mata kuliah {kode_mk} berhasil diambil! Semangat belajar! 💪")
-
-            # Refresh semua data
+            
+            messagebox.showinfo("Sukses! 🎉", f"Berhasil mengambil mata kuliah {nama_mk}!")
             self.update_krs_info()
-            self.refresh_available_courses()
-            self.refresh_current_krs()
-            self.refresh_mata_kuliah_list()
-
+            self.refresh_krs_data()
+            
         except sqlite3.IntegrityError:
-            # Error jika mata kuliah sudah diambil
-            messagebox.showerror("Sudah Diambil! 😅", "Mata kuliah ini sudah Anda ambil sebelumnya!")
+            messagebox.showwarning("Sudah Terdaftar! ⚠️", "Mata kuliah sudah diambil!")
         except Exception as e:
-            messagebox.showerror("Error", f"Terjadi kesalahan: {str(e)}")
+            messagebox.showerror("Error! ❌", f"Terjadi kesalahan: {str(e)}")
 
-    def batal_ambil_mata_kuliah(self):
-        """Fungsi untuk membatalkan pengambilan mata kuliah"""
-        # Validasi: pastikan mahasiswa sudah dipilih
+    def batal_matkul(self):
+        """Batalkan mata kuliah"""
         if not hasattr(self, 'current_nim'):
-            messagebox.showwarning("Pilih Mahasiswa! 😊", "Silakan pilih mahasiswa terlebih dahulu!")
+            messagebox.showwarning("Pilih Mahasiswa! ⚠️", "Pilih mahasiswa terlebih dahulu!")
             return
-
-        # Validasi: pastikan mata kuliah sudah dipilih
-        selected = self.current_krs_tree.selection()
+        
+        selected = self.enrolled_tree.selection()
         if not selected:
-            messagebox.showwarning("Pilih Mata Kuliah! 😊", "Silakan pilih mata kuliah yang ingin dibatalkan!")
+            messagebox.showwarning("Pilih Mata Kuliah! ⚠️", "Pilih mata kuliah yang akan dibatalkan!")
             return
-
-        # Ambil kode mata kuliah yang dipilih
-        item = self.current_krs_tree.item(selected)
+        
+        item = self.enrolled_tree.item(selected[0])
         kode_mk = item['values'][0]
-
-        # Konfirmasi pembatalan
-        if messagebox.askyesno("Konfirmasi Pembatalan 🤔", 
-                              f"Apakah Anda yakin ingin membatalkan mata kuliah {kode_mk}?\nAnda harus mendaftar ulang jika ingin mengambil lagi!"):
+        nama_mk = item['values'][1]
+        
+        result = messagebox.askyesno("Konfirmasi! 🤔", f"Yakin batalkan mata kuliah {nama_mk}?")
+        if result:
             try:
-                # Hapus data dari tabel KRS
+                # Get IDs
+                self.cursor.execute("SELECT id FROM mahasiswa WHERE nim=?", (self.current_nim,))
+                mahasiswa_id = self.cursor.fetchone()[0]
+                
+                self.cursor.execute("SELECT id FROM mata_kuliah WHERE kode_mk=?", (kode_mk,))
+                mata_kuliah_id = self.cursor.fetchone()[0]
+                
                 self.cursor.execute("""
-                    DELETE FROM krs WHERE nim=? AND kode_mk=?
-                """, (self.current_nim, kode_mk))
-
+                    DELETE FROM krs 
+                    WHERE mahasiswa_id=? AND mata_kuliah_id=?
+                """, (mahasiswa_id, mata_kuliah_id))
                 self.conn.commit()
-                messagebox.showinfo("Berhasil! 🎉", f"Mata kuliah {kode_mk} berhasil dibatalkan!")
-
-                # Refresh semua data
+                
+                messagebox.showinfo("Sukses! 🎉", f"Mata kuliah {nama_mk} berhasil dibatalkan!")
                 self.update_krs_info()
-                self.refresh_available_courses()
-                self.refresh_current_krs()
-                self.refresh_mata_kuliah_list()
-
+                self.refresh_krs_data()
+                
             except Exception as e:
-                messagebox.showerror("Error", f"Terjadi kesalahan: {str(e)}")
+                messagebox.showerror("Error! ❌", f"Terjadi kesalahan: {str(e)}")
+
+    # Laporan functions
+    def generate_laporan(self, event):
+        """Generate laporan untuk mahasiswa tertentu"""
+        selection = self.laporan_combo.get()
+        if not selection:
+            return
+        
+        nim = selection.split(' - ')[0]
+        
+        # Clear previous data
+        for item in self.laporan_tree.get_children():
+            self.laporan_tree.delete(item)
+        
+        # Get laporan data
+        self.cursor.execute("""
+            SELECT m.nim, m.nama, mk.kode_mk, mk.nama_mk, mk.sks, mk.dosen, mk.jadwal, k.status
+            FROM krs k
+            JOIN mahasiswa m ON k.mahasiswa_id = m.id
+            JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+            WHERE m.nim = ?
+            ORDER BY mk.kode_mk
+        """, (nim,))
+        
+        total_sks = 0
+        total_matkul = 0
+        
+        for row in self.cursor.fetchall():
+            self.laporan_tree.insert('', 'end', values=row)
+            total_sks += row[4]
+            total_matkul += 1
+        
+        # Update statistics
+        self.cursor.execute("SELECT nama, max_sks FROM mahasiswa WHERE nim=?", (nim,))
+        mhs_data = self.cursor.fetchone()
+        if mhs_data:
+            nama, max_sks = mhs_data
+            sisa_sks = max_sks - total_sks
+            stats_text = f"📊 {nama} | Total Mata Kuliah: {total_matkul} | Total SKS: {total_sks}/{max_sks} | Sisa SKS: {sisa_sks}"
+            self.stats_label.config(text=stats_text, fg='#27ae60' if sisa_sks >= 0 else '#e74c3c')
+
+    def lihat_semua_laporan(self):
+        """Lihat laporan semua mahasiswa"""
+        # Clear previous data
+        for item in self.laporan_tree.get_children():
+            self.laporan_tree.delete(item)
+        
+        # Get all laporan data
+        self.cursor.execute("""
+            SELECT m.nim, m.nama, mk.kode_mk, mk.nama_mk, mk.sks, mk.dosen, mk.jadwal, k.status
+            FROM krs k
+            JOIN mahasiswa m ON k.mahasiswa_id = m.id
+            JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+            ORDER BY m.nim, mk.kode_mk
+        """)
+        
+        total_records = 0
+        for row in self.cursor.fetchall():
+            self.laporan_tree.insert('', 'end', values=row)
+            total_records += 1
+        
+        # Update statistics
+        self.cursor.execute("SELECT COUNT(*) FROM mahasiswa")
+        total_mhs = self.cursor.fetchone()[0]
+        
+        stats_text = f"📊 Total Mahasiswa: {total_mhs} | Total Record KRS: {total_records}"
+        self.stats_label.config(text=stats_text, fg='#2c3e50')
+
+    def cetak_krs(self):
+        """Placeholder untuk cetak KRS"""
+        if not self.laporan_tree.get_children():
+            messagebox.showwarning("Tidak Ada Data! ⚠️", "Pilih mahasiswa atau lihat semua laporan terlebih dahulu!")
+            return
+        
+        messagebox.showinfo("Cetak KRS 🖨️", "Fitur cetak akan diintegrasikan dengan printer sistem!\n\nData KRS siap untuk dicetak.")
+
+    # Data refresh functions
+    def refresh_mahasiswa(self):
+        """Refresh data mahasiswa"""
+        # Clear treeview
+        for item in self.mahasiswa_tree.get_children():
+            self.mahasiswa_tree.delete(item)
+        
+        # Load data
+        self.cursor.execute("SELECT id, nim, nama, jurusan, semester, max_sks FROM mahasiswa ORDER BY nim")
+        for row in self.cursor.fetchall():
+            self.mahasiswa_tree.insert('', 'end', values=row)
+        
+        # Update comboboxes
+        self.cursor.execute("SELECT nim, nama FROM mahasiswa ORDER BY nim")
+        mahasiswa_list = [f"{nim} - {nama}" for nim, nama in self.cursor.fetchall()]
+        
+        self.mahasiswa_combo['values'] = mahasiswa_list
+        self.laporan_combo['values'] = mahasiswa_list
+
+    def refresh_matkul(self):
+        """Refresh data mata kuliah"""
+        # Clear treeview
+        for item in self.matkul_tree.get_children():
+            self.matkul_tree.delete(item)
+        
+        # Load data
+        self.cursor.execute("""
+            SELECT kode_mk, nama_mk, sks, semester, jadwal, dosen, ruang, kapasitas 
+            FROM mata_kuliah ORDER BY kode_mk
+        """)
+        for row in self.cursor.fetchall():
+            self.matkul_tree.insert('', 'end', values=row)
+
+    def refresh_all_data(self):
+        """Refresh semua data"""
+        self.refresh_mahasiswa()
+        self.refresh_matkul()
 
     def __del__(self):
         """Destructor untuk menutup koneksi database"""
         if hasattr(self, 'conn'):
             self.conn.close()
 
-# Main program - entry point aplikasi
-if __name__ == "__main__":
-    # Membuat instance root window
+def main():
     root = tk.Tk()
-    # Membuat instance aplikasi KRS
     app = KRSAppFarhanAlfareza(root)
-    # Menjalankan event loop GUI
     root.mainloop()
 
+if __name__ == "__main__":
+    main()
